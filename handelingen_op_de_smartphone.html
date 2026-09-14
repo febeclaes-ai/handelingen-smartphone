@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Handelingen op de smartphone</title>
+<style>
+html,body{margin:0;padding:0;background:#f2f2f2;font-family:Arial,sans-serif;color:#222}
+body{touch-action:manipulation}
+#app{max-width:600px;margin:auto;min-height:100vh;background:white}
+header{text-align:center;padding:16px 12px 10px;border-bottom:1px solid #ddd}
+h1{font-size:25px;margin:0 0 5px}
+#count{font-size:15px;color:#666}
+main{padding:14px}
+#instruction{font-size:25px;font-weight:bold;text-align:center;min-height:70px;display:flex;align-items:center;justify-content:center}
+#hint{text-align:center;color:#666;font-size:16px;min-height:48px}
+#area{height:430px;border:3px dashed #aaa;border-radius:18px;position:relative;overflow:hidden;background:#fafafa;touch-action:none}
+.target{position:absolute;width:90px;height:90px;border-radius:50%;background:#ddd;display:flex;align-items:center;justify-content:center;font-size:42px}
+#destination{position:absolute;width:90px;height:90px;border:3px dashed #999;border-radius:18px;display:flex;align-items:center;justify-content:center;font-size:40px;background:white}
+#message{position:absolute;inset:0;background:rgba(255,255,255,.92);display:none;align-items:center;justify-content:center;font-size:70px}
+#result{text-align:center;font-size:23px;font-weight:bold;min-height:35px;margin:10px}
+button{display:block;width:100%;padding:17px;border:0;border-radius:14px;background:#222;color:white;font-size:21px;font-weight:bold}
+.small{font-size:14px;color:#666;text-align:center;margin-top:8px}
+</style>
+</head>
+<body>
+<div id="app">
+<header><h1>📱 Handelingen op de smartphone</h1><div id="count"></div></header>
+<main>
+<div id="instruction"></div>
+<div id="hint"></div>
+<div id="area">
+  <div id="target" class="target">●</div>
+  <div id="destination" style="display:none"></div>
+  <div id="message">✓</div>
+</div>
+<div id="result"></div>
+<button id="next" style="display:none">Volgende →</button>
+<div class="small">Tip: doe de beweging rustig.</div>
+</main>
+</div>
+
+<script>
+(function(){
+var tasks=[
+["tap","👆 Tik op de bol!","Tik één keer op de bol.","●"],
+["swipeR","👉 Veeg naar rechts!","Zet je vinger op de bol en veeg naar rechts.","●"],
+["swipeL","👈 Veeg naar links!","Zet je vinger op de bol en veeg naar links.","●"],
+["drag","✋ Sleep de bol naar de ster!","Hou de bol vast. Beweeg je vinger naar de ⭐.","●"],
+["long","☝️ Duw op de bol!","Hou je vinger ongeveer 2 seconden op de bol.","●"],
+["pinchOpen","🤏 Maak de cirkel GROOT!","Gebruik twee vingers en beweeg ze uit elkaar.","⭕"],
+["tap","👆 Tik op de ster!","Tik één keer op de ster.","⭐"],
+["drag","✋ Sleep de ster naar het huis!","Hou de ⭐ vast. Sleep ze naar het 🏠.","⭐"],
+["pinchClose","🤏 Maak de cirkel KLEIN!","Gebruik twee vingers en beweeg ze naar elkaar.","⭕"],
+["long","☝️ Duw lang op de ster!","Hou je vinger ongeveer 2 seconden op de ster.","⭐"]
+];
+var i=0,done=false,startX=0,startY=0,longTimer=null,startDist=0;
+
+var instruction=document.getElementById("instruction");
+var hint=document.getElementById("hint");
+var count=document.getElementById("count");
+var area=document.getElementById("area");
+var target=document.getElementById("target");
+var dest=document.getElementById("destination");
+var message=document.getElementById("message");
+var result=document.getElementById("result");
+var next=document.getElementById("next");
+
+function setPos(el,x,y){
+ var r=area.getBoundingClientRect();
+ var w=el.offsetWidth,h=el.offsetHeight;
+ el.style.left=Math.max(5,Math.min(r.width-w-5,x-r.left-w/2))+"px";
+ el.style.top=Math.max(5,Math.min(r.height-h-5,y-r.top-h/2))+"px";
+}
+function reset(){
+ done=false; result.textContent=""; next.style.display="none"; message.style.display="none";
+ var t=tasks[i];
+ instruction.textContent=t[1]; hint.textContent=t[2];
+ count.textContent="Oefening "+(i+1)+" van "+tasks.length;
+ target.textContent=t[3]; target.style.display="flex";
+ setPos(target,area.getBoundingClientRect().left+area.clientWidth/2,area.getBoundingClientRect().top+area.clientHeight/2);
+ if(t[0]=="drag"){
+   dest.style.display="flex"; dest.textContent=(i==7?"🏠":"⭐");
+   setPos(dest,area.getBoundingClientRect().left+area.clientWidth-65,area.getBoundingClientRect().top+area.clientHeight/2);
+ }else dest.style.display="none";
+}
+function success(){
+ if(done)return; done=true; message.style.display="flex"; result.textContent="Goed gedaan! 🎉";
+ setTimeout(function(){message.style.display="none"},500); next.style.display="block";
+}
+function getDistance(a,b){return Math.hypot(a.clientX-b.clientX,a.clientY-b.clientY);}
+
+area.addEventListener("touchstart",function(e){
+ if(done)return;
+ var t=tasks[i];
+ if(t[0]=="pinchOpen"||t[0]=="pinchClose"){
+   if(e.touches.length==2){startDist=getDistance(e.touches[0],e.touches[1]);}
+   return;
+ }
+ var p=e.touches[0]; startX=p.clientX; startY=p.clientY;
+ if(t[0]=="long") longTimer=setTimeout(success,1700);
+},{passive:false});
+
+area.addEventListener("touchmove",function(e){
+ if(done)return;
+ var t=tasks[i];
+ if(t[0]=="pinchOpen"||t[0]=="pinchClose"){
+   if(e.touches.length==2){
+     e.preventDefault();
+     var d=getDistance(e.touches[0],e.touches[1]);
+     if(t[0]=="pinchOpen" && d>startDist+65)success();
+     if(t[0]=="pinchClose" && d<startDist-65)success();
+   }
+   return;
+ }
+ if(t[0]=="drag"){
+   e.preventDefault();
+   var p=e.touches[0]; setPos(target,p.clientX,p.clientY);
+ }
+},{passive:false});
+
+area.addEventListener("touchend",function(e){
+ if(done)return;
+ clearTimeout(longTimer);
+ var t=tasks[i],p=e.changedTouches[0],dx=p.clientX-startX,dy=p.clientY-startY;
+ if(t[0]=="tap"){
+   var a=target.getBoundingClientRect();
+   if(p.clientX>=a.left&&p.clientX<=a.right&&p.clientY>=a.top&&p.clientY<=a.bottom)success();
+ }
+ if(t[0]=="swipeR" && dx>80 && Math.abs(dx)>Math.abs(dy))success();
+ if(t[0]=="swipeL" && dx<-80 && Math.abs(dx)>Math.abs(dy))success();
+ if(t[0]=="drag"){
+   var a=target.getBoundingClientRect(),b=dest.getBoundingClientRect();
+   var ax=a.left+a.width/2,ay=a.top+a.height/2,bx=b.left+b.width/2,by=b.top+b.height/2;
+   if(Math.hypot(ax-bx,ay-by)<115)success();
+ }
+},{passive:false});
+
+area.addEventListener("mousedown",function(e){
+ if(done)return; var t=tasks[i]; startX=e.clientX;startY=e.clientY;
+ if(t[0]=="long")longTimer=setTimeout(success,1700);
+});
+area.addEventListener("mousemove",function(e){
+ if(done)return;if(tasks[i][0]=="drag" && e.buttons) setPos(target,e.clientX,e.clientY);
+});
+area.addEventListener("mouseup",function(e){
+ if(done)return;clearTimeout(longTimer);var t=tasks[i],dx=e.clientX-startX,dy=e.clientY-startY;
+ if(t[0]=="tap")success();
+ if(t[0]=="swipeR"&&dx>80&&Math.abs(dx)>Math.abs(dy))success();
+ if(t[0]=="swipeL"&&dx<-80&&Math.abs(dx)>Math.abs(dy))success();
+ if(t[0]=="drag"){var a=target.getBoundingClientRect(),b=dest.getBoundingClientRect();
+  if(Math.hypot(a.left+a.width/2-b.left-b.width/2,a.top+a.height/2-b.top-b.height/2)<115)success();}
+});
+next.addEventListener("click",function(){
+ i++;
+ if(i>=tasks.length){
+  instruction.textContent="🏆 Klaar!";
+  hint.textContent="Je hebt alle bewegingen geoefend.";
+  count.textContent="Alle oefeningen klaar!";
+  target.style.display="none";dest.style.display="none";next.style.display="none";
+  result.textContent="Super! 🎉";
+ }else reset();
+});
+window.addEventListener("resize",function(){if(!done)reset()});
+reset();
+})();
+</script>
+</body>
+</html>
